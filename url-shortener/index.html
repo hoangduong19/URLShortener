@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>URL Shortener</title>
+  <style>
+    body { font-family: Arial; text-align: center; margin-top: 50px; }
+    input, button { padding: 10px; font-size: 16px; }
+    .result { margin-top: 20px; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <h1>URL Shortener</h1>
+  <input type="text" id="originalUrl" placeholder="Nhập URL gốc" size="50">
+  <input type="text" id="customId" placeholder="Tùy chọn custom ID" size="20">
+  <button id="shortenBtn">Rút gọn</button>
+
+  <div class="result" id="result"></div>
+
+  <script>
+    const btn = document.getElementById("shortenBtn");
+    const resultDiv = document.getElementById("result");
+
+    btn.addEventListener("click", async () => {
+      const originalUrl = document.getElementById("originalUrl").value;
+      const customId = document.getElementById("customId").value;
+
+      const body = { originalUrl };
+      if (customId) body.customId = customId;
+
+      try {
+        const res = await fetch("http://localhost:3000/shorten", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body)
+        });
+
+        const data = await res.json();
+        if (res.ok) {
+          resultDiv.innerHTML = `<a href="${data.shortUrl}" target="_blank">${data.shortUrl}</a>`;
+        } else {
+          resultDiv.textContent = data.error;
+        }
+      } catch (err) {
+        resultDiv.textContent = "Lỗi kết nối server";
+      }
+    });
+  </script>
+</body>
+</html>
