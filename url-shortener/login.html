@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Login — URL Shortener</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root{--bg1:#0e4b57;--bg2:#1aa0b8;--card:#fff;--muted:#8f9aa3;--accent:#2f9b4f}
+    *{box-sizing:border-box}
+    body{margin:0;font-family:'Poppins',system-ui,Arial;padding:40px;background:linear-gradient(135deg,var(--bg1),var(--bg2));color:#fff;min-height:100vh;display:flex;align-items:center;justify-content:center}
+    .card{background:var(--card);color:#16383b;border-radius:12px;padding:28px;width:420px;box-shadow:0 10px 30px rgba(0,0,0,0.2)}
+    h1{margin:0 0 8px;font-size:22px}
+    p.lead{margin:0 0 18px;color:var(--muted)}
+    label{display:block;font-size:13px;margin-bottom:6px;color:#6b7580}
+    input{display:block;width:100%;padding:12px 14px;border:1px solid #e6eef0;border-radius:8px;font-size:15px;margin-bottom:12px}
+    .btn{background:var(--accent);color:#fff;border:none;padding:12px 18px;border-radius:8px;font-weight:600;cursor:pointer;width:100%}
+    .muted{font-size:13px;color:var(--muted);text-align:center;margin-top:10px}
+    .link{color:#0b8590;text-decoration:none;font-weight:600}
+    .error{color:#c44;margin-bottom:8px;font-size:14px}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Sign in to your account</h1>
+    <p class="lead">Welcome back — enter your details below.</p>
+
+    <div id="error" class="error" role="alert" aria-live="assertive" style="display:none"></div>
+
+    <label for="email">Email</label>
+    <input id="email" type="email" placeholder="you@example.com">
+
+    <label for="password">Password</label>
+    <input id="password" type="password" placeholder="Your password">
+
+    <button id="loginBtn" class="btn">Sign in</button>
+
+    <div class="muted">Don't have an account? <a href="register.html" class="link">Create one</a></div>
+  </div>
+
+  <script>
+    const loginBtn = document.getElementById('loginBtn');
+    const errDiv = document.getElementById('error');
+
+    function showError(msg){ errDiv.style.display='block'; errDiv.textContent = msg }
+    function clearError(){ errDiv.style.display='none'; errDiv.textContent = '' }
+
+    // Show success message if redirected from register or prefill email
+    const params = new URLSearchParams(window.location.search);
+    if(params.get('registered')){
+      const email = params.get('email') || '';
+      document.getElementById('email').value = decodeURIComponent(email);
+      clearError();
+      errDiv.style.display = 'block';
+      errDiv.style.color = '#2f9b4f';
+      errDiv.textContent = 'Account created. Please sign in.';
+    }
+
+    loginBtn.addEventListener('click', async () => {
+      clearError();
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+
+      if(!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return showError('Please enter a valid email');
+      if(!password) return showError('Please enter your password');
+
+      // Attempt to log in; if server says email not verified, resend the code and redirect to verify page
+      loginBtn.textContent = 'Signing in...';
+      loginBtn.disabled = true;
+
+      try {
+        const res = await fetch('/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+
+        const data = await res.json().catch(()=>({}));
+        if (res.ok) {
+          // For now, after successful login redirect to index
+          window.location.href = 'index.html';
+          return;
+        }
+
+        // If server indicates the email hasn't been verified, trigger resend and redirect
+        const errMsg = (data && data.error) ? String(data.error).toLowerCase() : '';
+        if (errMsg.includes('chưa được xác thực') || errMsg.includes('chưa được xác thực')) {
+          try {
+            await fetch('/resend-verification', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ email })
+            });
+          } catch (e) {
+            // ignore resend error, we'll still redirect so user can check email
+          }
+          window.location.href = `verify.html?email=${encodeURIComponent(email)}`;
+          return;
+        }
+
+        // Other errors
+        loginBtn.textContent = 'Sign in';
+        loginBtn.disabled = false;
+        showError(data.error || 'Login failed');
+      } catch (err) {
+        loginBtn.textContent = 'Sign in';
+        loginBtn.disabled = false;
+        showError('Network error — please try again');
+      }
+    });
+  </script>
+</body>
+</html>

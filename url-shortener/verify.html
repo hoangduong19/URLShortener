@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Verify Email — URL Shortener</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root{--bg1:#0e4b57;--bg2:#1aa0b8;--card:#fff;--muted:#8f9aa3;--accent:#2f9b4f}
+    *{box-sizing:border-box}
+    body{margin:0;font-family:'Poppins',system-ui,Arial;padding:40px;background:linear-gradient(135deg,var(--bg1),var(--bg2));color:#fff;min-height:100vh;display:flex;align-items:center;justify-content:center}
+    .card{background:var(--card);color:#16383b;border-radius:12px;padding:28px;width:420px;box-shadow:0 10px 30px rgba(0,0,0,0.2)}
+    h1{margin:0 0 8px;font-size:22px; display: flex; align-items: center;}
+    p.lead{margin:0 0 18px;color:var(--muted)}
+    .btn{background:var(--accent);color:#fff;border:none;padding:12px 18px;border-radius:8px;font-weight:600;cursor:pointer;width:100%}
+    .muted{font-size:13px;color:var(--muted);text-align:center;margin-top:10px}
+    .link{color:#0b8590;text-decoration:none;font-weight:600}
+    .error{color:#c44;margin-bottom:8px;font-size:14px}
+    .success{color:#2f9b4f;margin-bottom:8px;font-size:14px}
+    .row{display:flex;gap:8px}
+    .row .btn{flex:1}
+    /* nicer big square code inputs */
+    .code-row{display:flex;gap:12px;margin-bottom:20px}
+    .code-input{
+      width:50px;height:50px;border-radius:12px;background:#ffffff;border:1px solid #e6eef0;display:inline-flex;align-items:center;justify-content:center;text-align:center;font-size:28px;font-weight:700;color:#16383b;outline:none;transition:transform .12s ease,box-shadow .12s ease,border-color .12s ease;caret-color:transparent;
+      -webkit-appearance: none;appearance: none;
+    }
+    .code-input::placeholder{color:#9aa7ab;font-weight:600}
+    .code-input:focus{border-color:var(--accent);box-shadow:0 8px 20px rgba(47,155,79,0.12);transform:translateY(-2px)}
+    .code-input[aria-invalid="true"]{border-color:#c44}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Verify your code</h1>
+    <p class="lead">Enter the 6-digit code sent to you.</p>
+
+  <div id="message" role="status" aria-live="polite" style="display:none"></div>
+
+  <!-- Email is passed via query param; user does not need to enter it here -->
+  <div id="sentTo" style="font-size:13px;color:#6b7580;margin-bottom:12px"></div>
+
+  <div class="code-row" aria-label="Verification code">
+      <input id="digit-1" class="code-input" type="text" inputmode="numeric" maxlength="1" pattern="[0-9]*" autocomplete="one-time-code" aria-label="Digit 1">
+      <input id="digit-2" class="code-input" type="text" inputmode="numeric" maxlength="1" pattern="[0-9]*" autocomplete="one-time-code" aria-label="Digit 2">
+      <input id="digit-3" class="code-input" type="text" inputmode="numeric" maxlength="1" pattern="[0-9]*" autocomplete="one-time-code" aria-label="Digit 3">
+      <input id="digit-4" class="code-input" type="text" inputmode="numeric" maxlength="1" pattern="[0-9]*" autocomplete="one-time-code" aria-label="Digit 4">
+      <input id="digit-5" class="code-input" type="text" inputmode="numeric" maxlength="1" pattern="[0-9]*" autocomplete="one-time-code" aria-label="Digit 5">
+      <input id="digit-6" class="code-input" type="text" inputmode="numeric" maxlength="1" pattern="[0-9]*" autocomplete="one-time-code" aria-label="Digit 6">
+    </div>
+
+    <div class="row">
+      <button id="verifyBtn" class="btn">Verify</button>
+      <button id="resendBtn" class="btn" style="background:#e6eef0;color:#16383b">Resend</button>
+    </div>
+
+    <div class="muted">Back to <a href="login.html" class="link">Sign in</a></div>
+  </div>
+
+  <script>
+  const params = new URLSearchParams(window.location.search);
+  const codeInputs = Array.from(document.querySelectorAll('.code-input'));
+    const verifyBtn = document.getElementById('verifyBtn');
+    const resendBtn = document.getElementById('resendBtn');
+    const msg = document.getElementById('message');
+  const sentTo = document.getElementById('sentTo');
+  const emailFromQuery = params.get('email') ? decodeURIComponent(params.get('email')) : null;
+  if (emailFromQuery) {
+    sentTo.textContent = 'Code was sent to: ' + emailFromQuery;
+  } else {
+    sentTo.textContent = 'No email provided — open the verification link from your email or register again.';
+  }
+
+    function showMessage(text, ok=true){
+      msg.style.display='block';
+      msg.textContent = text;
+      msg.className = ok ? 'success' : 'error';
+    }
+
+    function clearMessage(){
+      msg.style.display='none';
+      msg.textContent='';
+      msg.className='';
+    }
+
+    function getCode(){
+      return codeInputs.map(i => i.value || '').join('');
+    }
+
+    // behavior: only digits, auto-advance, backspace, and paste distribution
+    codeInputs.forEach((input, idx) => {
+      input.addEventListener('input', (e) => {
+        const v = input.value.replace(/[^0-9]/g, '');
+        input.value = v.slice(0,1);
+        if (v && idx < codeInputs.length - 1) codeInputs[idx+1].focus();
+      });
+      input.addEventListener('keydown', (e) => {
+        // Robust Backspace behavior: always clear current box (or previous if empty) and move left
+        if (e.key === 'Backspace'){
+          e.preventDefault();
+          if (input.value) {
+            // clear current and move left
+            input.value = '';
+            if (idx > 0) codeInputs[idx-1].focus();
+          } else {
+            // current empty -> move to previous and clear it
+            if (idx > 0) {
+              codeInputs[idx-1].value = '';
+              codeInputs[idx-1].focus();
+            }
+          }
+          return;
+        }
+        if (e.key === 'ArrowLeft' && idx > 0) { e.preventDefault(); codeInputs[idx-1].focus(); }
+        if (e.key === 'ArrowRight' && idx < codeInputs.length - 1) { e.preventDefault(); codeInputs[idx+1].focus(); }
+      });
+      // handle paste on each input
+      input.addEventListener('paste', (ev) => {
+        ev.preventDefault();
+        const paste = (ev.clipboardData || window.clipboardData).getData('text') || '';
+        const digits = paste.replace(/\D/g, '').slice(0, codeInputs.length);
+        for (let i = 0; i < digits.length; i++) codeInputs[i].value = digits[i];
+        if (digits.length > 0 && digits.length < codeInputs.length) codeInputs[digits.length].focus();
+      });
+    });
+
+    verifyBtn.addEventListener('click', async ()=>{
+      clearMessage();
+      const code = getCode();
+      if(!/^[0-9]{6}$/.test(code)) return showMessage('Please enter the 6-digit code', false);
+
+      verifyBtn.textContent = 'Verifying...'; verifyBtn.disabled = true;
+      try {
+        const email = emailFromQuery;
+        if (!email) { showMessage('No email available to verify. Please use the link from your inbox.', false); verifyBtn.textContent = 'Verify'; verifyBtn.disabled = false; return; }
+        const res = await fetch('/verify-email', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ email, code }) });
+        const data = await res.json().catch(()=>({}));
+        if(res.ok){
+          showMessage('Code verified — you can now sign in');
+          setTimeout(()=> window.location.href = 'login.html', 1200);
+        } else {
+          showMessage(data.error || 'Verification failed', false);
+          verifyBtn.textContent = 'Verify'; verifyBtn.disabled = false;
+        }
+      } catch(err){
+        showMessage('Network error — try again', false);
+        verifyBtn.textContent = 'Verify'; verifyBtn.disabled = false;
+      }
+    });
+
+    resendBtn.addEventListener('click', async ()=>{
+      clearMessage();
+      const email = emailFromQuery;
+      if (!email) return showMessage('No email available to resend to. Please use the registration flow.', false)
+      resendBtn.textContent = 'Sending...'; resendBtn.disabled = true;
+      try {
+        const res = await fetch('/resend-verification', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ email }) });
+        const data = await res.json().catch(()=>({}));
+        if(res.ok){
+          showMessage('Verification code resent — check your inbox');
+        } else {
+          showMessage(data.error || 'Failed to resend', false);
+        }
+      } catch(err){
+        showMessage('Network error — try again', false);
+      }
+      resendBtn.textContent = 'Resend'; resendBtn.disabled = false;
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Register — URL Shortener</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root{--bg1:#0e4b57;--bg2:#1aa0b8;--card:#fff;--muted:#8f9aa3;--accent:#2f9b4f}
+    *{box-sizing:border-box}
+    body{margin:0;font-family:'Poppins',system-ui,Arial;padding:40px;background:linear-gradient(135deg,var(--bg1),var(--bg2));color:#fff;min-height:100vh;display:flex;align-items:center;justify-content:center}
+    .card{background:var(--card);color:#16383b;border-radius:12px;padding:28px;width:420px;box-shadow:0 10px 30px rgba(0,0,0,0.2)}
+    h1{margin:0 0 8px;font-size:22px}
+    p.lead{margin:0 0 18px;color:var(--muted)}
+    label{display:block;font-size:13px;margin-bottom:6px;color:#6b7580}
+    input{display:block;width:100%;padding:12px 14px;border:1px solid #e6eef0;border-radius:8px;font-size:15px;margin-bottom:12px}
+    .btn{background:var(--accent);color:#fff;border:none;padding:12px 18px;border-radius:8px;font-weight:600;cursor:pointer;width:100%}
+    .muted{font-size:13px;color:var(--muted);text-align:center;margin-top:10px}
+    .link{color:#0b8590;text-decoration:none;font-weight:600}
+    .error{color:#c44;margin-bottom:8px;font-size:14px}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Create your free account</h1>
+    <p class="lead">Sign up to manage your shortened links and view analytics.</p>
+
+    <div id="error" class="error" role="alert" aria-live="assertive" style="display:none"></div>
+
+    <label for="name">Full name</label>
+    <input id="name" type="text" placeholder="Your name">
+
+    <label for="email">Email</label>
+    <input id="email" type="email" placeholder="you@example.com">
+
+    <label for="password">Password</label>
+    <input id="password" type="password" placeholder="At least 8 characters">
+
+    <button id="registerBtn" class="btn">Create account</button>
+
+    <div class="muted">Already have an account? <a href="login.html" class="link">Sign in</a></div>
+  </div>
+
+  <script>
+    const registerBtn = document.getElementById('registerBtn');
+    const errDiv = document.getElementById('error');
+
+    function showError(msg){ errDiv.style.display='block'; errDiv.textContent = msg }
+    function clearError(){ errDiv.style.display='none'; errDiv.textContent = '' }
+
+    registerBtn.addEventListener('click', async () => {
+      clearError();
+      const name = document.getElementById('name').value.trim();
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+
+      if(!name) return showError('Please enter your name');
+      if(!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return showError('Please enter a valid email');
+
+      if(!password || password.length < 8) return showError('Password must be at least 8 characters');
+      if (!/[A-Z]/.test(password)) return showError('Password must contain at least one uppercase letter');
+      if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) return showError('Password must contain at least one special character');
+      if (!/[0-9]/.test(password)) return showError('Password must contain at least one number');
+
+      registerBtn.textContent = 'Creating...';
+      registerBtn.disabled = true;
+
+      try {
+        const res = await fetch('/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, email, password })
+        });
+
+        const data = await res.json().catch(()=>({}));
+        if (res.ok) {
+          // Redirect to verification page so user can enter the 6-digit code sent by email
+          window.location.href = 'verify.html?email=' + encodeURIComponent(email);
+        } else {
+          registerBtn.textContent = 'Create account';
+          registerBtn.disabled = false;
+          showError(data.error || 'Registration failed');
+        }
+      } catch (err) {
+        registerBtn.textContent = 'Create account';
+        registerBtn.disabled = false;
+        showError('Network error — please try again');
+      }
+    });
+  </script>
+</body>
+</html>
