@@ -1,0 +1,24 @@
+version: '3.8'
+services:
+  mongo:
+    image: mongo:6
+    restart: unless-stopped
+    volumes:
+      - mongo-data:/data/db
+    ports:
+      - "27017:27017"
+
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - MONGODB_URI=mongodb://mongo:27017/urlshortener
+      - BASE_URL=http://localhost:3000
+      # For email testing you can set Ethereal by leaving SMTP_* unset and the app will use Ethereal
+      # For Gmail OAuth2, set SMTP_USER, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REFRESH_TOKEN
+    depends_on:
+      - mongo
+
+volumes:
+  mongo-data:

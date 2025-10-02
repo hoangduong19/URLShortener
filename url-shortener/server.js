@@ -7,17 +7,25 @@ import fs from 'fs'
 import { fileURLToPath } from 'url'
 import bcrypt from 'bcryptjs'
 import nodemailer from 'nodemailer'
+import { google } from 'googleapis'
+import dotenv from 'dotenv'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 const app = express()
-const PORT = 3000
+const PORT = process.env.PORT || 3000
+// Base public URL used when generating full short links. Set this in production (e.g. https://yourdomain.com)
+const BASE_URL = process.env.BASE_URL 
+// Optional short branded domain to display in the UI (example: my.ly or d.gg). Do not include protocol.
+const DISPLAY_DOMAIN = process.env.DISPLAY_DOMAIN || ''
 
 app.use(express.json())
 app.use(express.static(path.join(__dirname)))
+dotenv.config()
 
-mongoose.connect('mongodb://127.0.0.1:27017/urlshortener')
-  .then(()=> console.log('✅ Kết nối MongoDB thành công!'))
+const MONGODB_URI = process.env.MONGODB_URI 
+mongoose.connect(MONGODB_URI)
+  .then(()=> console.log('✅ Kết nối MongoDB thành công!', MONGODB_URI))
   .catch(err => console.error('❌ Lỗi kết nối MongoDB:', err))
 
 const urlSchema = new mongoose.Schema({ shortId: { type: String, required: true, unique: true }, originalUrl: { type: String, required: true }, createdAt: { type: Date, default: Date.now } })
@@ -35,7 +43,34 @@ const userSchema = new mongoose.Schema({
 const User = mongoose.model('User', userSchema)
 
 async function createTransporter(){
+  // If Google OAuth2 credentials are provided, use Gmail OAuth2
+  const { GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REFRESH_TOKEN, SMTP_USER } = process.env
+  if (GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET && GOOGLE_REFRESH_TOKEN && SMTP_USER) {
+    try {
+      const oAuth2Client = new google.auth.OAuth2(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET)
+      oAuth2Client.setCredentials({ refresh_token: GOOGLE_REFRESH_TOKEN })
+      const accessTokenObj = await oAuth2Client.getAccessToken()
+      const accessToken = accessTokenObj?.token || accessTokenObj
+      if (!accessToken) throw new Error('Failed to obtain access token')
+      return nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+          type: 'OAuth2',
+          user: SMTP_USER,
+          clientId: GOOGLE_CLIENT_ID,
+          clientSecret: GOOGLE_CLIENT_SECRET,
+          refreshToken: GOOGLE_REFRESH_TOKEN,
+          accessToken,
+        },
+      })
+    } catch (err) {
+      console.error('Gmail OAuth2 setup failed, falling back to SMTP/Ethereal:', err)
+    }
+  }
+
+  // Fall back to SMTP if SMTP_HOST is provided
   if (process.env.SMTP_HOST && process.env.SMTP_USER) return nodemailer.createTransport({ host: process.env.SMTP_HOST, port: Number(process.env.SMTP_PORT||587), secure: !!process.env.SMTP_SECURE, auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS } })
+  // Development fallback: Ethereal
   const acct = await nodemailer.createTestAccount()
   return nodemailer.createTransport({ host: 'smtp.ethereal.email', port: 587, auth: { user: acct.user, pass: acct.pass } })
 }
@@ -59,8 +94,11 @@ app.post('/shorten', async (req,res)=>{
     if (!originalUrl) return res.status(400).json({ error: 'Thiếu originalURL' })
     let shortId = customId || nanoid(6)
     if (customId){ const e = await Url.findOne({ shortId: customId }); if (e) return res.status(400).json({ error: 'Trùng customId' }) }
-    await new Url({ shortId, originalUrl }).save()
-    return res.json({ shortUrl: `http://localhost:${PORT}/${shortId}` })
+  await new Url({ shortId, originalUrl }).save()
+  const shortUrl = `${BASE_URL}/${shortId}`
+  const shortPath = `${shortId}`
+  const displayUrl = DISPLAY_DOMAIN ? `${DISPLAY_DOMAIN.replace(/\/$/, '')}/${shortId}` : undefined
+  return res.json({ shortUrl, shortPath, displayUrl })
   }catch(err){ return res.status(500).json({ error: 'Lỗi server', details: err.message }) }
 })
 
@@ -139,4 +177,4 @@ app.get('/:shortId', async (req,res)=>{
 
 app.get('/', (req,res)=> res.sendFile(path.join(__dirname, 'index.html')))
 
-app.listen(PORT, ()=> console.log('Server đang chạy tại http://localhost:' + PORT))
+app.listen(PORT, ()=> console.log('Server đang chạy tại ' + BASE_URL))
