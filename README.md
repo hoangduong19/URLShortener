@@ -8,6 +8,8 @@
 
 A full-stack URL shortening web application with user authentication and email verification, deployed on Microsoft Azure. Built with modern JavaScript technologies and MongoDB.
 
+<img width="1919" height="862" alt="image" src="https://github.com/user-attachments/assets/09091a8f-2ba2-464c-8a68-6c69c6926fe1" />
+
 ## 🚀 **Key Features**
 
 ### **Core Functionality**
@@ -20,12 +22,13 @@ A full-stack URL shortening web application with user authentication and email v
 - **Account Security**: Password strength validation and secure session management
 - **Verification Code System**: Email verification using Google Gmail API with time-limited 6-digit verification codes (15-minute expiry)
 
+<img width="1919" height="868" alt="image" src="https://github.com/user-attachments/assets/0f282908-b61a-4a00-83ca-b4a03bf2d271" />
+
 ### **Advanced Email Integration**
 - **Gmail OAuth2**: Production-ready Gmail integration using Google APIs
 - **SMTP Fallback**: Support for custom SMTP servers
 - **Development Mode**: Ethereal email testing for development
 - **Multi-Provider Support**: Flexible email configuration system
-
 
 ## 🛠 **Technology Stack**
 
@@ -35,6 +38,8 @@ A full-stack URL shortening web application with user authentication and email v
 - **MongoDB 7.8.7**: NoSQL database with Mongoose ODM
 - **bcryptjs**: Industry-standard password hashing
 - **nanoid**: Cryptographically secure ID generation
+
+<img width="1622" height="679" alt="image" src="https://github.com/user-attachments/assets/c5b979fa-e906-4c5d-95b3-517bd3aaa673" />
 
 ### **Email & Authentication**
 - **Google APIs**: OAuth2 integration for Gmail
@@ -85,6 +90,8 @@ A full-stack URL shortening web application with user authentication and email v
 ```
 
 ## 🚀 **Deployment & Infrastructure**
+
+<img width="1919" height="814" alt="image" src="https://github.com/user-attachments/assets/b312acc3-5a2f-4aad-aa9e-d68e9111ff9b" />
 
 ### **Containerization**
 - **Multi-stage Docker builds** for optimized production images
