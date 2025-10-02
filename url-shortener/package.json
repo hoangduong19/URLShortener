@@ -3,7 +3,10 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "get-refresh-token": "node scripts/get_refresh_token.js",
+    "check-token": "node scripts/check_token.js",
+    "send-test-mail": "node scripts/send_test_mail.js"
   },
   "keywords": [],
   "author": "",
@@ -12,9 +15,12 @@
   "type": "module",
   "dependencies": {
     "bcryptjs": "^3.0.2",
+    "dotenv": "^17.2.3",
     "express": "^5.1.0",
-    "nanoid": "^5.1.6",
+    "googleapis": "^131.0.0",
     "mongoose": "^7.4.0",
-    "nodemailer": "^6.9.4"
+    "nanoid": "^5.1.6",
+    "nodemailer": "^6.9.4",
+    "open": "^10.2.0"
   }
 }
